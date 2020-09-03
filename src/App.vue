@@ -11,11 +11,9 @@ import { Component, Vue } from 'vue-property-decorator'
 export default class SimpleChat extends Vue {
   mounted() {
     this.runStarrySky()
-    console.log(123)
   }
   // 星空背景
   runStarrySky() {
-    console.log(this)
     function lineToAngle(x1: number, y1: number, length: number, radians: number) {
       const x2 = x1 + length * Math.cos(radians),
         y2 = y1 + length * Math.sin(radians)
