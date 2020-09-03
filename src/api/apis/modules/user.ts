@@ -1,4 +1,4 @@
-import fetch from '@/api/fetch';
+import fetch from '@/api/fetch'
 
 /**
  * 更新用户信息
@@ -7,15 +7,15 @@ import fetch from '@/api/fetch';
 export const patchUser = (params: User) => {
   return fetch.patch(`/user/${params.userId}`, {
     ...params,
-  });
-};
+  })
+}
 
 /**
  * 用户名模糊搜索用户
  * @param username
  */
 export function getUsersByName(username: string) {
-  return fetch.get(`/user/findByName?username=${username}`);
+  return fetch.get(`/user/findByName?username=${username}`)
 }
 
 /**
@@ -27,5 +27,5 @@ export function setUserAvatar(params: FormData) {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
-  });
+  })
 }

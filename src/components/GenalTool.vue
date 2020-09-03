@@ -6,20 +6,129 @@
       </div>
       <div class="tool-avatar-name">{{ user.username }}</div>
     </div>
+    <div class="tool-set">
+      <a-icon class="tool-set-icon" type="setting" @click="showModal('showSetModal')" />
+    </div>
+    <a-tooltip placement="topLeft" arrow-point-at-center>
+      <div slot="title">
+        <div>移动端暂不能切换聊天组</div>
+        <div>截图粘贴可发送图片</div>
+      </div>
+      <a-icon type="bulb" class="tip" />
+    </a-tooltip>
+    <a href="https://github.com/git-zhangyu/simpleChat" target="_blank" class="github"><a-icon type="github"/></a>
+    <a-modal title="用户信息" :visible="showUserModal" footer="" @cancel="handleCancel('showUserModal')">
+      <div class="tool-user">
+        <a-avatar :src="user.avatar" class="tool-user-img" :size="100"></a-avatar>
+        <div class="tool-user-avatar">
+          <div class="tool-user-avatar-title">更改头像</div>
+          <a-upload style="margin-left: 17px;" :show-upload-list="false" :before-upload="beforeUpload">
+            <div class="upload">
+              <a-icon type="upload" style="margin-right: 4px;" />
+              {{ avatar.name ? avatar.name : '请选择' }}
+            </div>
+          </a-upload>
+          <a-button class="button" type="primary" :disabled="!avatar" :loading="uploading" @click="handleUpload">
+            {{ uploading ? '更换中' : '确定' }}
+          </a-button>
+        </div>
+
+        <div class="tool-user-name">
+          <div class="tool-user-name-title">更改用户名</div>
+          <a-input v-model="username" placeholder="请输入用户名"></a-input>
+          <a-button type="primary" @click="changeUser">确认</a-button>
+        </div>
+      </div>
+    </a-modal>
+
+    <a-modal title="设置" :visible="showSetModal" footer="" @cancel="handleCancel('showSetModal')">
+      <div>退出 <a-icon class="tool-set-icon" type="poweroff" @click="logout" /></div>
+    </a-modal>
   </div>
 </template>
 
 <script lang="ts">
-import { Vue, Component } from 'vue-property-decorator'
+import { Vue, Component, Watch } from 'vue-property-decorator'
 import { namespace } from 'vuex-class'
+import { nameVerify, processReturn } from '@/utils/common'
+import * as apis from '@/api/apis'
+import { setUserAvatar } from '@/api/apis'
 const appModule = namespace('app')
 const chatModule = namespace('chat')
 
 @Component
 export default class GenalTool extends Vue {
   @appModule.Getter('user') user: User
+  @appModule.Mutation('set_user') setUser: Function
+  @chatModule.Getter('socket') socket: any
+  username: string = ''
+  showSetModal: boolean = false
+  showUserModal: boolean = false
+  uploading: boolean = false
+  avatar: any = ''
+  @Watch('user')
+  userChange() {
+    this.username = this.user.username
+  }
+
+  created() {
+    this.username = this.user.username
+  }
+  logout() {
+    this.$emit('logout')
+  }
+
   showModal(modalType: 'showSetModal' | 'showUserModal') {
-    console.log(modalType)
+    this.username = this.user.username
+    this[modalType] = true
+  }
+  handleCancel(modalType: 'showSetModal' | 'showUserModal') {
+    this[modalType] = false
+  }
+  async changeUser() {
+    if (!nameVerify(this.username)) {
+      return
+    }
+    let user: User = JSON.parse(JSON.stringify(this.user))
+    user.username = this.username
+    let res = await apis.patchUser(user)
+    let data = processReturn(res)
+    if (data) {
+      console.log(data)
+      this.setUser(data)
+      this.socket.emit('joinGroupSocket', {
+        groupId: '888888',
+        userId: data.userId,
+      })
+    }
+  }
+  beforeUpload(file: any) {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/jpg' || file.type === 'image/gif'
+    if (!isJpgOrPng) {
+      return this.$message.error('请上传jpeg/jpg/png/gif格式的图片!')
+    }
+    const isLt1M = file.size / 1024 / 1024 < 0.5
+    if (!isLt1M) {
+      return this.$message.error('图片必须小于500K!')
+    }
+    this.avatar = file
+    return false
+  }
+  async handleUpload() {
+    this.uploading = true
+    const formData = new FormData()
+    formData.append('avatar', this.avatar)
+    formData.append('userId', this.user.userId)
+    let data = processReturn(await setUserAvatar(formData))
+    if (data) {
+      this.setUser(data)
+      this.uploading = false
+      // 通知其他用户个人信息改变
+      this.socket.emit('joinGroupSocket', {
+        groupId: '888888',
+        userId: data.userId,
+      })
+    }
   }
 }
 </script>
